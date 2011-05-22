@@ -34,23 +34,36 @@
             defaultTransitionSpeed: 300,
 
             /**
+             * Any elements with this class will have their children turned
+             * into slides.
+             */
+            discloseClass: 'disclose',
+
+            effects: {
+                fade: {
+                    show: 'fadeIn',
+                    hide: 'fadeOut'
+                }
+            },
+
+            /**
              * Selector used to specify what elements, when they receive mouse
              * or keyboard input, should not change the slide.
              */
             hotKeyFilter: 'a,button,input',
 
             /**
-             * Selector use to mark slides that, when shown, hide all their
+             * Class use to mark slides that, when shown, hide all their
              * sibling slides
              */
-            replaceSelector: '.replace',
+            replaceClass: 'replace',
 
             resize: true,
 
             /**
-             * Selector used to pick out slides.
+             * CSS class used to mark slides.
              */
-            slideSelector: '.slide'
+            slideClass: 'slide'
         },
 
         disableSlideChanges: function() {
@@ -167,7 +180,7 @@
                 $toHide = (self.$slide ? self.$slide : $([]));
                 $toHide = $toHide.add($slide.siblings(o.slideSelector));
             } else {
-                $toHide = $([]);
+                $toHide = $slide.nextAll(o.slideSelector);
             }
 
             // Always make sure the top-level slide's siblings are hidden
@@ -213,8 +226,10 @@
 
                 } else {
                     self.disableSlideChanges();
-                    $toHide.hide(speed);
-                    $toShow.show(speed, function() { self.enableSlideChanges(500); });
+                    var hideFunc = self.hide($toHide, speed, null, true);
+                    var showFunc = self.show($toShow, speed, function() { self.enableSlideChanges(500); }, true);
+                    hideFunc();
+                    showFunc();
                 }
 
             } else {
@@ -239,6 +254,66 @@
             $c.height(windowHeight - (pos.top * 2));
 
 
+        }, /* }}} */
+
+        /**
+         * getEffectForSlide($slide) {{{
+         */
+        getEffectForSlide: function($slide) {
+
+            var self = this, o = self.options;
+
+            var effectToUse = { show: 'show', hide: 'hide' };
+            jQuery.each(o.effects, function(name, effect) {
+                if ($slide.hasClass(name)) {
+                    effectToUse = effect;
+                    return false;
+                }
+
+            });
+            return effectToUse;
+        }, /* }}} */
+
+        /**
+         * runEffect(action, $slide, effect, speed, complete, postpone) {{{
+         */
+        runEffect: function(action, $slide, effect, speed, complete, postpone) {
+
+            var func = function() {
+
+                if (effect === false) {
+                    $slide[action]();
+                    if (jQuery.isFunction(complete)) {
+                        complete();
+                    }
+                    return;
+                }
+
+                $slide[effect[action]](speed, complete);
+            };
+
+            if (postpone) {
+                return func;
+            } else {
+                func();
+            }
+
+        }, /* }}} */
+
+        /**
+         * show($slide, speed, complete, postpone) {{{
+         */
+        show: function($slide, speed, complete, postpone) {
+            var effect = (speed === false) ? false : this.getEffectForSlide($slide);
+            return this.runEffect('show', $slide, effect, speed, complete, postpone);
+        }, /* }}} */
+
+        /**
+         * hide($slide, speed, complete, postpone) {{{
+         */
+        hide: function($slide, speed, complete, postpone) {
+            var effect = (speed === false) ? false : this.getEffectForSlide($slide);
+            return this.runEffect('hide', $slide, effect, speed, complete, postpone);
         }, /* }}} */
 
         /**
@@ -268,6 +343,7 @@
                     position: 'absolute',
                     left: pos.left,
                     top: pos.top,
+                    width: $toHide.width(),
                     display: 'block'
                 });
             }
@@ -306,7 +382,19 @@
         var p = $.presentator;
         p.options = o = $.extend({}, p.defaults, opts || {});
 
+        // Turn all the *Class keys into *Selector keys
+        jQuery.each(o, function(key, value) {
+            var m = /(.*?)Class$/.exec(key);
+            if (m) {
+                o[m[1] + 'Selector'] = '.' + value;
+            }
+        });
+
         p.$container = $(this).css('position', 'relative');
+
+        // Do some pre-processing
+        p.$container.find(o.discloseSelector).children().addClass(o.slideClass);
+
         p.$allSlides = p.$container.find(o.slideSelector);
         p.$topLevelSlides = p.$container.children(o.slideSelector).hide();
 
