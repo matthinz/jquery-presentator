@@ -128,6 +128,62 @@
             return true;
         }, /* }}} */
 
+        nextTopLevelSlide: function(speed) {
+
+            var self = this, o = self.options;
+            var $current = self.$slide ? self.$slide : $([]);
+
+            var $parents = $current.parents(o.slideSelector);
+            if ($parents.length) {
+                $current = $parents.eq($parents.length - 1);
+            }
+
+            currentIndex = $.inArray($current[0], self.$allSlides);
+
+            var nextIndex = currentIndex + 1;
+            var $next = (nextIndex >= self.$allSlides.length) ? null : self.$allSlides.eq(nextIndex);
+
+            if (!$next) {
+                return false;
+            }
+
+            self.loadSlide($next, speed);
+
+            return true;
+        },
+
+        prevTopLevelSlide: function(speed) {
+
+            var self = this, o = self.options;
+            var $current = self.$slide ? self.$slide : $([]);
+
+            var $parents = $current.parents(o.slideSelector);
+            if ($parents.length) {
+                $current = $parents.eq($parents.length - 1);
+            }
+
+            currentIndex = $.inArray($current[0], self.$allSlides);
+
+            var prevIndex = currentIndex - 1;
+            var $prev = (prevIndex <= 0) ? null : self.$allSlides.eq(prevIndex);
+
+            if (!$prev) {
+                return false;
+            }
+
+            self.loadSlide($prev, speed);
+
+            return true;
+        },
+
+        firstSlide: function(speed) {
+            this.loadSlide(this.$allSlides.eq(0), speed);
+        },
+
+        lastSlide: function(speed) {
+            this.loadSlide(this.$allSlides.eq(this.$allSlides.length - 1), speed);
+        },
+
         /**
          * loadSlide(id, speed) {{{
          */
@@ -204,6 +260,7 @@
             self.$slide = $slide;
 
             var $topToHide, $topToShow;
+
 
             if (topLevelTransition) {
 
@@ -429,7 +486,7 @@
 
 
         p.$allSlides = p.$container.find(o.slideSelector);
-        p.$topLevelSlides = p.$container.children(o.slideSelector).hide().eq(0).show().end();
+        p.$topLevelSlides = p.$container.children(o.slideSelector).hide();
 
         // Add IDs to those w/o
         p.$allSlides.each(function(i) {
@@ -458,15 +515,36 @@
             })
             .keydown(function(e) {
 
-                if ((e.which == 37 || e.which == 39) && !$(e.target).is(o.hotKeyFilter)) {
+                console.log(e.which);
+
+                if ((e.which >= 32 && e.which <= 39) && !$(e.target).is(o.hotKeyFilter)) {
 
                     e.preventDefault();
                     e.stopPropagation();
 
                     switch(e.which) {
+
+                        case 33:
+                            p.prevTopLevelSlide();
+                            return false;
+
+                        case 34:
+                            p.nextTopLevelSlide();
+                            return false;
+
+                        case 35:
+                            p.lastSlide();
+                            return false;
+
+                        case 36:
+                            p.firstSlide();
+                            return false;
+
                         case 37:
                             p.prevSlide();
                             return false;
+
+                        case 32:
                         case 39:
                             p.nextSlide();
                             return false;
