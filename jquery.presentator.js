@@ -175,6 +175,7 @@
                 $slide.parent().is(self.$container) || // Top-level slides
                 $slide.is(o.replaceSelector);
 
+
             if (replaceSiblings) {
                 // Hide what was previously shown
                 $toHide = (self.$slide ? self.$slide : $([]));
@@ -188,14 +189,20 @@
             if (!$topLevelSlide.length) $topLevelSlide = $topLevelSlide.add($slide);
             $toHide = $toHide.add($topLevelSlide.siblings(o.slideSelector));
 
+            var topLevelTransition = !$topLevelSlide.is(':visible');
+
             // Don't hide things that are going to be re-shown
              $toHide = $toHide.filter(function() {
-                return $.inArray(this, $toShow) < 0 && $(this).is(':visible');
+
+                 if ($.inArray(this, $toShow) < 0) {
+                     return $(this).is(':visible');
+                 }
+
+                 return false;
             });
 
             self.$slide = $slide;
 
-            var topLevelTransition = !$topLevelSlide.is(':visible');
             var $topToHide, $topToShow;
 
             if (topLevelTransition) {
@@ -210,8 +217,13 @@
                 if (!$slide.is($topToShow)) {
                     // We are showing something in another slide,
                     // ensure that it and everything before it is visible
-                    var $allBefore = $slide.prevAll(o.slideSelector);
-                    $allBefore.find(o.slideSelector).andSelf().show();
+                    if ($slide.is(o.replaceSelector)) {
+                        $slide.siblings(o.slideSelector).hide();
+                    } else {
+                        var $allBefore = $slide.prevAll(o.slideSelector);
+                        $allBefore.find(o.slideSelector).andSelf().show();
+                    }
+
                     $slide.show();
                 }
 
@@ -222,12 +234,12 @@
                 // Show/hide animatedly
                 if (topLevelTransition) {
                     // Top-level transitions are fancier
-                    $.presentator.crossFade($topToHide, $topToShow, speed, function() { self.enableSlideChanges(500); });
+                    $.presentator.crossFade($topToHide, $topToShow, speed, function() { self.enableSlideChanges(500); self.slideShown($slide); });
 
                 } else {
                     self.disableSlideChanges();
                     var hideFunc = self.hide($toHide, speed, null, true);
-                    var showFunc = self.show($toShow, speed, function() { self.enableSlideChanges(500); }, true);
+                    var showFunc = self.show($toShow, speed, function() { self.enableSlideChanges(500); self.slideShown($slide); }, true);
                     hideFunc();
                     showFunc();
                 }
@@ -236,6 +248,7 @@
                 $toHide.hide();
                 $toShow.show();
                 self.enableSlideChanges();
+                self.slideShown($slide);
             }
 
         }, /* }}} */
@@ -373,7 +386,18 @@
                         }
                     }
                 );
-        } /* }}} */
+        }, /* }}} */
+
+        slideShown: function($slide) {
+
+            var func = $slide.attr('id') + '_show';
+            if (jQuery.isFunction(window[func])) {
+                window[func].apply($slide[0]);
+            }
+
+            this.$container.trigger('slideShown', [$slide]);
+
+        }
 
     };
 
@@ -393,10 +417,19 @@
         p.$container = $(this).css('position', 'relative');
 
         // Do some pre-processing
-        p.$container.find(o.discloseSelector).children().addClass(o.slideClass);
+        p.$container
+            .find(o.discloseSelector)
+                .children()
+                    .addClass(o.slideClass)
+                .end()
+            .filter(o.replaceSelector)
+                .children(o.slideSelector)
+                    .addClass(o.replaceClass)
+                .end();
+
 
         p.$allSlides = p.$container.find(o.slideSelector);
-        p.$topLevelSlides = p.$container.children(o.slideSelector).hide();
+        p.$topLevelSlides = p.$container.children(o.slideSelector).hide().eq(0).show().end();
 
         // Add IDs to those w/o
         p.$allSlides.each(function(i) {
